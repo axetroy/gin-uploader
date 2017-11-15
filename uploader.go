@@ -60,15 +60,13 @@ func Resolve(e *gin.Engine, config TConfig) (err error, uploader *gin.RouterGrou
 	uploader.POST("/file", UploadFile)
 	uploader.GET("/example", UploaderTemplate("image"))
 
-	{
-		// download file
-		uploadFile := downloader.Group("/file")
-		uploadFile.GET("/raw/:filename", GetFileRaw)
-		uploadFile.GET("/download/:filename", DownloadFile)
-	}
-
 	// download all
 	downloader = e.Group("/download")
+
+	// download file
+	uploadFile := downloader.Group("/file")
+	uploadFile.GET("/raw/:filename", GetFileRaw)
+	uploadFile.GET("/download/:filename", DownloadFile)
 
 	downloader.Use(func(context *gin.Context) {
 		header := context.Writer.Header()
