@@ -10,6 +10,7 @@ http:
 # 上传模块的相关设置
 
 upload:
+  urlprefix: /api/v1
   path: uploads                                 # 文件上传的根目录
   # 普通文件上传
   file:

@@ -25,9 +25,10 @@ type ThumbnailConfig struct {
 }
 
 type TConfig struct {
-	Path  string //文件上传的根目录
-	File  FileConfig
-	Image ImageConfig
+	Path      string //文件上传的根目录
+	UrlPrefix string // api的url前缀
+	File      FileConfig
+	Image     ImageConfig
 }
 
 var Config TConfig
@@ -54,14 +55,14 @@ func Resolve(e *gin.Engine, config TConfig) (err error, uploader *gin.RouterGrou
 		return
 	}
 	// upload all
-	uploader = e.Group("/upload")
+	uploader = e.Group(Config.UrlPrefix + "/upload")
 
 	uploader.POST("/image", UploaderImage)
 	uploader.POST("/file", UploadFile)
 	uploader.GET("/example", UploaderTemplate("image"))
 
 	// download all
-	downloader = e.Group("/download")
+	downloader = e.Group(Config.UrlPrefix + "/download")
 
 	// download file
 	uploadFile := downloader.Group("/file")
