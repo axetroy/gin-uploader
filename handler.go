@@ -290,7 +290,7 @@ func UploaderTemplate(template string) (func(context *gin.Context)) {
   <title>Upload</title>
 </head>
 <body>
-<form action="/upload/image" method="post" enctype="multipart/form-data">
+<form action="`+ Config.UrlPrefix+ `/upload/image" method="post" enctype="multipart/form-data">
   <h2>Image Upload</h2>
   <input type="file" name="file">
   <input type="submit" value="Upload">
@@ -298,7 +298,7 @@ func UploaderTemplate(template string) (func(context *gin.Context)) {
 
 </hr>
 
-<form action="/upload/file" method="post" enctype="multipart/form-data">
+<form action="`+ Config.UrlPrefix+ `/upload/file" method="post" enctype="multipart/form-data">
   <h2>File Upload</h2>
   <input type="file" name="file">
   <input type="submit" value="Upload">

@@ -28,6 +28,7 @@ func main() {
 
 	uploader.Resolve(Router, uploader.TConfig{
 		Path: "upload",
+		UrlPrefix: "/api/v1",
 		File: uploader.FileConfig{
 			Path:      "files",
 			MaxSize:   10485760,

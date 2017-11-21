@@ -49,26 +49,18 @@ func Init() (err error) {
 	return
 }
 
-func Resolve(e *gin.Engine, config TConfig) (err error, uploader *gin.RouterGroup, downloader *gin.RouterGroup) {
+/**
+Create Router
+ */
+func New(e *gin.Engine, config TConfig) (uploader *gin.RouterGroup, downloader *gin.RouterGroup, err error, ) {
 	Config = config
 	if err = Init(); err != nil {
 		return
 	}
 	// upload all
 	uploader = e.Group(Config.UrlPrefix + "/upload")
-
-	uploader.POST("/image", UploaderImage)
-	uploader.POST("/file", UploadFile)
-	uploader.GET("/example", UploaderTemplate("image"))
-
 	// download all
 	downloader = e.Group(Config.UrlPrefix + "/download")
-
-	// download file
-	uploadFile := downloader.Group("/file")
-	uploadFile.GET("/raw/:filename", GetFileRaw)
-	uploadFile.GET("/download/:filename", DownloadFile)
-
 	downloader.Use(func(context *gin.Context) {
 		header := context.Writer.Header()
 		// alone dns prefect
@@ -92,13 +84,28 @@ func Resolve(e *gin.Engine, config TConfig) (err error, uploader *gin.RouterGrou
 		// no sniff
 		header.Set("X-Content-Type-Options", "nosniff")
 	})
+	return
+}
 
-	{
-		// download image
-		downloadImage := downloader.Group("/image")
-		downloadImage.GET("/thumbnail/:filename", GetThumbnailImage)
-		downloadImage.GET("/origin/:filename", GetOriginImage)
-	}
+/**
+Resolve
+ */
+func Resolve(uploader *gin.RouterGroup, downloader *gin.RouterGroup) (err error) {
+
+	// upload the file/image
+	uploader.POST("/image", UploaderImage)
+	uploader.POST("/file", UploadFile)
+	uploader.GET("/example", UploaderTemplate("image"))
+
+	// get file which upload
+	uploadFile := downloader.Group("/file")
+	uploadFile.GET("/raw/:filename", GetFileRaw)
+	uploadFile.GET("/download/:filename", DownloadFile)
+
+	// get image which upload
+	downloadImage := downloader.Group("/image")
+	downloadImage.GET("/thumbnail/:filename", GetThumbnailImage)
+	downloadImage.GET("/origin/:filename", GetOriginImage)
 
 	return
 }
