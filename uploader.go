@@ -2,48 +2,56 @@ package uploader
 
 import (
 	"path"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/axetroy/go-fs"
+	"github.com/asaskevich/govalidator"
 )
 
 type FileConfig struct {
-	Path      string   // 普通文件的存放目录
-	MaxSize   int      // 普通文件上传的限制大小，单位byte
-	AllowType []string // 允许上传的文件后缀名
+	Path      string   `valid:"required,length(1|20)"`  // 普通文件的存放目录
+	MaxSize   int      `valid:"required"`               // 普通文件上传的限制大小，单位byte, 最大单位1GB
+	AllowType []string `valid:"required,length(0|100)"` // 允许上传的文件后缀名
 }
 
 type ImageConfig struct {
-	Path      string // 图片存储路径
-	MaxSize   int    // 最大图片上传限制，单位byte
+	Path      string `valid:"required,length(1|20)"` // 图片存储路径
+	MaxSize   int    `valid:"required"`              // 最大图片上传限制，单位byte
 	Thumbnail ThumbnailConfig
 }
 
 type ThumbnailConfig struct {
-	Path      string // 缩略图存放路径
-	MaxWidth  int    // 缩略图最大宽度
-	MaxHeight int    // 缩略图最大高度
+	Path      string `valid:"required,length(1|20)"` // 缩略图存放路径
+	MaxWidth  int    `valid:"required"`              // 缩略图最大宽度
+	MaxHeight int    `valid:"required"`              // 缩略图最大高度
 }
 
 type TConfig struct {
-	Path      string //文件上传的根目录
-	UrlPrefix string // api的url前缀
+	Path      string `valid:"required,length(1|20)"` //文件上传的根目录
+	UrlPrefix string `valid:"required,length(0|20)"` // api的url前缀
 	File      FileConfig
 	Image     ImageConfig
 }
 
+type Uploader struct {
+	Upload   *gin.RouterGroup
+	Download *gin.RouterGroup
+	Config   TConfig
+}
+
 var Config TConfig
 
-func Init() (err error) {
-	if err = fs.EnsureDir(Config.Path); err != nil {
+func InitUploader(c *TConfig) (err error) {
+	if err = fs.EnsureDir(c.Path); err != nil {
 		return
 	}
-	if err = fs.EnsureDir(path.Join(Config.Path, Config.File.Path)); err != nil {
+	if err = fs.EnsureDir(path.Join(c.Path, c.File.Path)); err != nil {
 		return
 	}
-	if err = fs.EnsureDir(path.Join(Config.Path, Config.Image.Path)); err != nil {
+	if err = fs.EnsureDir(path.Join(c.Path, c.Image.Path)); err != nil {
 		return
 	}
-	if err = fs.EnsureDir(path.Join(Config.Path, Config.Image.Thumbnail.Path)); err != nil {
+	if err = fs.EnsureDir(path.Join(c.Path, c.Image.Thumbnail.Path)); err != nil {
 		return
 	}
 	return
@@ -52,15 +60,31 @@ func Init() (err error) {
 /**
 Create Router
  */
-func New(e *gin.Engine, config TConfig) (uploader *gin.RouterGroup, downloader *gin.RouterGroup, err error, ) {
-	Config = config
-	if err = Init(); err != nil {
+func New(e *gin.Engine, c TConfig) (u *Uploader, err error, ) {
+	Config = c
+
+	var (
+		isValidConfig bool
+	)
+
+	if isValidConfig, err = govalidator.ValidateStruct(c); err != nil {
+		err = errors.New(`invalid uploader config: [` + err.Error() + `]`)
+		return
+	} else {
+		if isValidConfig == false {
+			err = errors.New("invalid Uploader config")
+			return
+		}
+	}
+
+	if err = InitUploader(&Config); err != nil {
 		return
 	}
+
 	// upload all
-	uploader = e.Group(Config.UrlPrefix + "/upload")
+	uploader := e.Group(Config.UrlPrefix + "/upload")
 	// download all
-	downloader = e.Group(Config.UrlPrefix + "/download")
+	downloader := e.Group(Config.UrlPrefix + "/download")
 	downloader.Use(func(context *gin.Context) {
 		header := context.Writer.Header()
 		// alone dns prefect
@@ -84,26 +108,32 @@ func New(e *gin.Engine, config TConfig) (uploader *gin.RouterGroup, downloader *
 		// no sniff
 		header.Set("X-Content-Type-Options", "nosniff")
 	})
-	return
+
+	return &Uploader{
+		Upload:   uploader,
+		Download: downloader,
+		Config:   c,
+	}, nil
+
 }
 
 /**
 Resolve
  */
-func Resolve(uploader *gin.RouterGroup, downloader *gin.RouterGroup) (err error) {
+func (u *Uploader) Resolve() {
 
 	// upload the file/image
-	uploader.POST("/image", UploaderImage)
-	uploader.POST("/file", UploadFile)
-	uploader.GET("/example", UploaderTemplate("image"))
+	u.Upload.POST("/image", UploaderImage)
+	u.Upload.POST("/file", UploadFile)
+	u.Upload.GET("/example", UploaderTemplate("image"))
 
 	// get file which upload
-	uploadFile := downloader.Group("/file")
+	uploadFile := u.Download.Group("/file")
 	uploadFile.GET("/raw/:filename", GetFileRaw)
 	uploadFile.GET("/download/:filename", DownloadFile)
 
 	// get image which upload
-	downloadImage := downloader.Group("/image")
+	downloadImage := u.Download.Group("/image")
 	downloadImage.GET("/thumbnail/:filename", GetThumbnailImage)
 	downloadImage.GET("/origin/:filename", GetOriginImage)
 
