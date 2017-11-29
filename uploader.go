@@ -37,6 +37,7 @@ type Uploader struct {
 	Upload   *gin.RouterGroup
 	Download *gin.RouterGroup
 	Config   TConfig
+	Engine   *gin.Engine
 }
 
 var Config TConfig
@@ -113,6 +114,7 @@ func New(e *gin.Engine, c TConfig) (u *Uploader, err error, ) {
 		Upload:   uploader,
 		Download: downloader,
 		Config:   c,
+		Engine:   e,
 	}, nil
 
 }
@@ -125,6 +127,7 @@ func (u *Uploader) Resolve() {
 	// upload the file/image
 	u.Upload.POST("/image", UploaderImage)
 	u.Upload.POST("/file", UploadFile)
+
 	u.Upload.GET("/example", UploaderTemplate("image"))
 
 	// get file which upload
